@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/api/projects)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const express = require\\('express'\\); console.log\\('express version:', require\\('express/package.json'\\).version\\);\")",
+      "Bash(node -e ':*)",
+      "Bash(curl -s http://localhost:3000/test)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); fetch\\(process.env.GITLAB_HOST + '/api/v4/projects?membership=true&per_page=100&order_by=last_activity_at', {headers:{'PRIVATE-TOKEN': process.env.GITLAB_TOKEN}}\\).then\\(r=>r.json\\(\\)\\).then\\(ps=>ps.forEach\\(p=>console.log\\(p.id, '\\\\t', p.path_with_namespace\\)\\)\\).catch\\(e=>console.error\\(e.message\\)\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr 3000)",
+      "Bash(taskkill:*)"
+    ]
+  }
+}

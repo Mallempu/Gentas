@@ -1,0 +1,5 @@
+node_modules/
+.env
+*.xlsx
+projects.json
+tracker_export.json

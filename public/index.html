@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generator Laporan Task MR</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+
+    .header { background: #1F3864; color: #fff; padding: 20px 32px; }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+
+    .container { max-width: 1400px; margin: 24px auto; padding: 0 16px; }
+
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 16px; color: #1F3864; margin-bottom: 16px; border-bottom: 2px solid #D6E4F0; padding-bottom: 8px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group.span2 { grid-column: span 2; }
+    .form-group label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .form-group select,
+    .form-group input { padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 14px; }
+    .form-group select:focus,
+    .form-group input:focus { outline: none; border-color: #2E75B6; box-shadow: 0 0 0 3px rgba(46,117,182,0.15); }
+
+    .project-info { font-size: 12px; color: #888; margin-top: 4px; }
+    .project-info .badge { display: inline-block; background: #2E75B6; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-right: 4px; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn { padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #2E75B6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #1F5F99; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #1e7e34; }
+
+    .status-bar { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .status-bar.loading { display: block; background: #FFF3CD; color: #856404; }
+    .status-bar.success { display: block; background: #D4EDDA; color: #155724; }
+    .status-bar.error { display: block; background: #F8D7DA; color: #721C24; }
+
+    .logs { font-size: 12px; color: #666; margin-top: 8px; }
+    .logs div { padding: 2px 0; }
+
+    .result-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+    .result-table th { background: #1F3864; color: #fff; padding: 10px 6px; text-align: left; font-weight: 600; position: sticky; top: 0; white-space: nowrap; }
+    .result-table td { padding: 7px 6px; border-bottom: 1px solid #e0e0e0; }
+    .result-table tr.group-row td { background: #2E75B6; color: #fff; font-weight: 600; }
+    .result-table tr.item-row:hover td { background: #EAF0F8; }
+    .result-table tr.item-row td { background: #fafbfc; }
+    .result-table td.commits-cell { max-width: 300px; white-space: pre-line; font-size: 11px; color: #555; }
+    .result-table td.mr-id { font-family: monospace; font-weight: 600; color: #2E75B6; white-space: nowrap; }
+
+    .table-wrap { max-height: 600px; overflow: auto; border: 1px solid #e0e0e0; border-radius: 6px; }
+
+    .stat { display: inline-block; background: #D6E4F0; color: #1F3864; font-weight: 600; padding: 4px 12px; border-radius: 12px; font-size: 13px; margin-right: 8px; }
+
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.span2 { grid-column: span 1; }
+      .btn-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Generator Laporan Task MR</h1>
+  <p>Tarik Merge Request dari GitLab dan generate laporan Excel</p>
+</div>
+
+<div class="container">
+  <!-- FORM -->
+  <div class="card">
+    <h2>Konfigurasi</h2>
+    <div class="form-grid">
+      <div class="form-group span2">
+        <label for="project">Project</label>
+        <select id="project">
+          <option value="">-- Memuat project... --</option>
+        </select>
+        <div class="project-info" id="projectInfo"></div>
+      </div>
+      <div class="form-group">
+        <label for="assignee">Assignee</label>
+        <select id="assignee">
+          <option value="">Semua</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="dateFrom">Periode Dari</label>
+        <input type="date" id="dateFrom">
+      </div>
+      <div class="form-group">
+        <label for="dateTo">Periode Sampai</label>
+        <input type="date" id="dateTo">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnPreview" onclick="doPreview()">Preview Data</button>
+      <button class="btn btn-success" id="btnDownload" onclick="doDownload()" disabled>Download Excel</button>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar" id="statusBar"></div>
+
+  <!-- RESULT -->
+  <div class="card" id="resultCard" style="display:none;">
+    <h2>Hasil Preview</h2>
+    <div id="resultStats"></div>
+    <div class="logs" id="resultLogs"></div>
+    <div class="table-wrap" style="margin-top: 12px;">
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>MR ID</th>
+            <th>Name</th>
+            <th>Assignee</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Created</th>
+            <th>Start Date</th>
+            <th>Due Date</th>
+            <th>Date Done</th>
+            <th>Completed At</th>
+            <th>Commits</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let projectsData = [];
+  const COL_COUNT = 11;
+
+  async function loadProjects() {
+    try {
+      const res = await fetch('/api/projects');
+      projectsData = await res.json();
+      const sel = document.getElementById('project');
+      sel.innerHTML = '<option value="">-- Pilih Project --</option>';
+
+      const singles = projectsData.filter(p => !p.group);
+      const groups = projectsData.filter(p => p.group);
+
+      if (singles.length) {
+        const og1 = document.createElement('optgroup');
+        og1.label = 'Single Project';
+        for (const p of singles) {
+          const opt = document.createElement('option');
+          opt.value = p.key;
+          opt.textContent = `${p.name} (ID: ${p.projectId})`;
+          og1.appendChild(opt);
+        }
+        sel.appendChild(og1);
+      }
+
+      if (groups.length) {
+        const og2 = document.createElement('optgroup');
+        og2.label = 'Group (Multi-Repo)';
+        for (const p of groups) {
+          const opt = document.createElement('option');
+          opt.value = p.key;
+          opt.textContent = `${p.name} (${p.projects.join(' + ')})`;
+          og2.appendChild(opt);
+        }
+        sel.appendChild(og2);
+      }
+    } catch (e) {
+      setStatus('error', 'Gagal memuat daftar project: ' + e.message);
+    }
+  }
+
+  // Load members when project changes
+  document.getElementById('project').addEventListener('change', async function() {
+    const p = projectsData.find(x => x.key === this.value);
+    const info = document.getElementById('projectInfo');
+    const assigneeSel = document.getElementById('assignee');
+
+    if (!p) {
+      info.innerHTML = '';
+      assigneeSel.innerHTML = '<option value="">Semua</option>';
+      return;
+    }
+
+    if (p.group) {
+      info.innerHTML = `<span class="badge">GROUP</span> Gabungan dari: ${p.projects.join(', ')} &mdash; Group By: ${p.groupBy}`;
+    } else {
+      info.innerHTML = `Project ID: <strong>${p.projectId}</strong> &mdash; Branch: <strong>${p.targetBranch || 'semua'}</strong> &mdash; Group By: ${p.groupBy}`;
+    }
+
+    // Fetch members
+    assigneeSel.innerHTML = '<option value="">Memuat...</option>';
+    try {
+      const res = await fetch(`/api/members?project=${encodeURIComponent(this.value)}`);
+      const members = await res.json();
+      assigneeSel.innerHTML = '<option value="">Semua</option>';
+      for (const m of members) {
+        const opt = document.createElement('option');
+        opt.value = m.username;
+        opt.textContent = `${m.name} (@${m.username})`;
+        assigneeSel.appendChild(opt);
+      }
+    } catch (e) {
+      assigneeSel.innerHTML = '<option value="">Semua (gagal memuat member)</option>';
+    }
+  });
+
+  function setStatus(type, msg) {
+    const bar = document.getElementById('statusBar');
+    bar.className = 'status-bar ' + type;
+    bar.textContent = msg;
+  }
+
+  function getFormData() {
+    return {
+      projectKey: document.getElementById('project').value,
+      updatedAfter: document.getElementById('dateFrom').value,
+      updatedBefore: document.getElementById('dateTo').value,
+      assignee: document.getElementById('assignee').value,
+    };
+  }
+
+  async function doPreview() {
+    const data = getFormData();
+    if (!data.projectKey) { setStatus('error', 'Pilih project terlebih dahulu'); return; }
+
+    const btn = document.getElementById('btnPreview');
+    btn.disabled = true;
+    btn.textContent = 'Memuat...';
+    setStatus('loading', 'Mengambil data MR dan commits dari GitLab...');
+    document.getElementById('resultCard').style.display = 'none';
+
+    try {
+      const res = await fetch('/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+
+      setStatus('success', `Berhasil! Total ${json.total} MR ditemukan.`);
+      document.getElementById('btnDownload').disabled = false;
+
+      // Stats
+      const groupCount = json.rows.filter(r => r.type === 'group').length;
+      document.getElementById('resultStats').innerHTML =
+        `<span class="stat">${json.total} MR</span><span class="stat">${groupCount} Grup</span>`;
+
+      // Logs
+      document.getElementById('resultLogs').innerHTML = json.logs.map(l => `<div>${l}</div>`).join('');
+
+      // Table
+      const tbody = document.getElementById('resultBody');
+      tbody.innerHTML = '';
+      for (const row of json.rows) {
+        const tr = document.createElement('tr');
+        if (row.type === 'group') {
+          tr.className = 'group-row';
+          tr.innerHTML = `<td colspan="${COL_COUNT}">${esc(row.name)} (${row.count} MR)</td>`;
+        } else {
+          tr.className = 'item-row';
+          tr.innerHTML =
+            `<td class="mr-id">${esc(row.mrId)}</td>` +
+            `<td>${esc(row.name)}</td>` +
+            `<td>${esc(row.assignee)}</td>` +
+            `<td>${esc(row.status)}</td>` +
+            `<td>${esc(row.priority)}</td>` +
+            `<td>${esc(row.created)}</td>` +
+            `<td>${esc(row.startDate)}</td>` +
+            `<td>${esc(row.dueDate)}</td>` +
+            `<td>${esc(row.dateDone)}</td>` +
+            `<td>${esc(row.completedAt)}</td>` +
+            `<td class="commits-cell">${esc(row.commits)}</td>`;
+        }
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById('resultCard').style.display = 'block';
+    } catch (e) {
+      setStatus('error', 'Gagal: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Preview Data';
+    }
+  }
+
+  async function doDownload() {
+    const data = getFormData();
+    if (!data.projectKey) return;
+
+    const btn = document.getElementById('btnDownload');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    setStatus('loading', 'Membuat file Excel...');
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error);
+      }
+
+      const blob = await res.blob();
+      const cd = res.headers.get('content-disposition') || '';
+      const match = cd.match(/filename="(.+?)"/);
+      const filename = match ? match[1] : 'Laporan_Task_MR.xlsx';
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      setStatus('success', `File ${filename} berhasil di-download!`);
+    } catch (e) {
+      setStatus('error', 'Gagal download: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Download Excel';
+    }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // Set default dates (awal bulan ini s/d hari ini)
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('dateFrom').value = `${y}-${m}-01`;
+  document.getElementById('dateTo').value = now.toISOString().slice(0, 10);
+
+  loadProjects();
+</script>
+
+</body>
+</html>

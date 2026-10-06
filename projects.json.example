@@ -1,0 +1,23 @@
+{
+  "my-project": {
+    "projectId": "123",
+    "name": "My Project",
+    "targetBranch": "",
+    "groupBy": "milestone"
+  },
+  "another-project": {
+    "projectId": "456",
+    "name": "Another Project",
+    "targetBranch": "",
+    "groupBy": "milestone"
+  },
+
+  "_comment": "Group: gabungkan beberapa repo jadi 1 laporan",
+
+  "all": {
+    "group": true,
+    "name": "All Projects",
+    "projects": ["my-project", "another-project"],
+    "groupBy": "repo"
+  }
+}
